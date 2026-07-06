@@ -4168,66 +4168,78 @@ DATOS_TUPA = [
 
 st.set_page_config(page_title="TUPA San Ramón", layout="wide")
 
-# Estilos CSS
+# CSS para el resaltado y estilo institucional
 st.markdown("""
     <style>
-    .titulo-verde { color: #1E5631; font-weight: bold; }
-    .resaltado { background-color: #FFF176; color: #000000; }
+    .titulo-verde { color: #1E5631; font-weight: bold; font-size: 1.1em; }
+    .resaltado { background-color: #FFF176; color: #000000; font-weight: bold; }
+    .header-box { background-color: #1E5631; padding: 20px; color: white; border-radius: 5px; }
     </style>
 """, unsafe_allow_html=True)
 
-# Encabezado (Como en image_eb255d.png)
-st.markdown('<div style="background-color:#1E5631; padding:20px; color:white; border-radius:5px;"><h1>🏛️ MUNICIPALIDAD DISTRITAL DE SAN RAMÓN</h1><p>SISTEMA INTERNO DE CONSULTA TUPA</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-box"><h1>🏛️ MUNICIPALIDAD DISTRITAL DE SAN RAMÓN</h1><p>SISTEMA INTERNO DE CONSULTA TUPA</p></div>', unsafe_allow_html=True)
 
-# Lógica de estados para navegación
-if 'indice' not in st.session_state: st.session_state.indice = 0
+# Lógica de búsqueda
 if 'resultados' not in st.session_state: st.session_state.resultados = []
+if 'indice' not in st.session_state: st.session_state.indice = 0
 
-# Inputs
 col1, col2 = st.columns([3, 1])
 with col1:
     termino = st.text_input("Buscar término:")
 with col2:
-    filtro = st.radio("Criterio:", ["Todo", "Número", "Nombre", "Clave"])
+    filtro = st.radio("Criterio:", ["Todo", "Número", "Nombre"])
 
-def resaltar(texto, palabra):
+def resaltar_texto(texto, palabra):
     if not palabra: return texto
-    # Reemplaza la palabra buscada por una versión con etiqueta span para el color amarillo
-    return re.sub(f"({re.escape(palabra)})", r'<span class="resaltado">\1</span>', texto, flags=re.IGNORECASE)
+    return re.sub(f"({re.escape(palabra)})", r'<span class="resaltado">\1</span>', str(texto), flags=re.IGNORECASE)
 
-if st.button("Buscar"):
+if st.button("BUSCAR"):
     st.session_state.indice = 0
-    # Lógica de búsqueda
     st.session_state.resultados = [
         item for item in DATOS_TUPA 
         if (filtro == "Todo" and termino.lower() in str(item).lower()) or
            (filtro == "Número" and termino.lower() in item["numero"].lower()) or
-           (filtro == "Nombre" and termino.lower() in item["procedimiento"].lower()) or
-           (filtro == "Clave" and termino.lower() in item["sustento"].lower())
+           (filtro == "Nombre" and termino.lower() in item["procedimiento"].lower())
     ]
 
-# Visualización
+# Despliegue de resultados bloque a bloque
 if st.session_state.resultados:
-    proc = st.session_state.resultados[st.session_state.indice]
+    total = len(st.session_state.resultados)
+    idx = st.session_state.indice
+    proc = st.session_state.resultados[idx]
     
-    st.write(f"### Coincidencia: {st.session_state.indice + 1} de {len(st.session_state.resultados)}")
+    st.markdown(f"### Coincidencia {idx + 1} de {total}")
+    st.markdown("---")
     
-    # Mostrar campos con resaltado
-    campos = [("N.º ITEM:", proc["numero"]), ("PROCEDIMIENTO:", proc["procedimiento"]), ("BASE LEGAL / SUSTENTO:", proc["sustento"])]
+    # Lista de los 10 campos solicitados
+    campos = [
+        ("N° ITEM:", proc["numero"]),
+        ("PROCEDIMIENTO:", proc["procedimiento"]),
+        ("BASE LEGAL / SUSTENTO:", proc["sustento"]),
+        ("DERECHO DE TRÁMITE:", proc["derecho_tramite"]),
+        ("PLAZO PARA RESOLVER:", proc["plazo"]),
+        ("INICIO DEL PROCEDIMIENTO:", proc["inicio"]),
+        ("AUTORIDAD COMPETENTE:", proc["autoridad"]),
+        ("RECURSO DE RECONSIDERACIÓN:", proc["reconsideracion"]),
+        ("RECURSO DE APELACIÓN:", proc["apelacion"])
+    ]
+    
     for tit, cont in campos:
         st.markdown(f'<div class="titulo-verde">{tit}</div>', unsafe_allow_html=True)
-        st.markdown(resaltar(cont, termino), unsafe_allow_html=True)
+        st.markdown(resaltar_texto(cont, termino), unsafe_allow_html=True)
         st.write("")
 
-    # Botones de navegación
-    col_a, col_b = st.columns([1, 1])
-    if st.session_state.indice > 0:
-        if col_a.button("⏮️ Anterior"):
-            st.session_state.indice -= 1
-            st.rerun()
-    if st.session_state.indice < len(st.session_state.resultados) - 1:
-        if col_b.button("Siguiente ⏭️"):
-            st.session_state.indice += 1
-            st.rerun()
-else:
+    st.markdown('<div class="titulo-verde">REQUISITOS ESTRUCTURADOS:</div>', unsafe_allow_html=True)
+    for req in proc["requisitos"]:
+        st.markdown(f"🔹 {resaltar_texto(req, termino)}", unsafe_allow_html=True)
+
+    # Navegación
+    col_izq, col_der = st.columns([1, 1])
+    if idx > 0 and col_izq.button("⏮️ Anterior"):
+        st.session_state.indice -= 1
+        st.rerun()
+    if idx < total - 1 and col_der.button("Siguiente ⏭️"):
+        st.session_state.indice += 1
+        st.rerun()
+elif termino:
     st.warning("No se encontraron resultados.")
