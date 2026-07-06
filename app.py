@@ -1,5 +1,5 @@
 import streamlit as st
-import re  [
+import re  
     {
         "id": "1",
         "numero": "1.0",
