@@ -1,11 +1,7 @@
-Python
-import tkinter as tk
-from tkinter import messagebox
+import streamlit as st
 
-# ==============================================================================
-# BASE DE DATOS (Pega aquí tus 169 procedimientos)
-# ==============================================================================
-DATOS_TUPA = [
+# [AQUÍ VA TU LISTA DATOS_TUPA CON LOS 169 REGISTROS]
+DATOS_TUPA =  [
     {
         "id": "1",
         "numero": "1.0",
@@ -4169,102 +4165,45 @@ DATOS_TUPA = [
     },
 ]
 
-class BuscadorTupaInstitucional:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("SISTEMA DE CONSULTA TUPA - MUNICIPALIDAD DE SAN RAMÓN")
-        self.root.geometry("950x720")
-        self.root.configure(bg="#F4F6F4")
+st.set_page_config(page_title="TUPA San Ramón", layout="centered")
 
-        # Colores Institucionales
-        self.VERDE_OSCURO = "#1E5631"
-        self.VERDE_CLARO = "#4C9A2A"
+# --- CSS PARA COLORES INSTITUCIONALES Y ESTILOS ---
+st.markdown("""
+    <style>
+    .titulo-seccion { color: #1E5631; font-weight: bold; font-size: 1.1em; margin-top: 10px; }
+    .contenido-texto { color: #222222; font-size: 1em; margin-bottom: 5px; }
+    .header-box { background-color: #1E5631; padding: 20px; color: white; border-radius: 5px; }
+    </style>
+""", unsafe_allow_html=True)
 
-        self.coincidencias = []
-        self.indice = 0
-        
-        self.crear_interfaz()
+# Encabezado
+st.markdown('<div class="header-box"><h1>🏛️ MUNICIPALIDAD DISTRITAL DE SAN RAMÓN</h1><p>SISTEMA INTERNO DE CONSULTA TUPA</p></div>', unsafe_allow_html=True)
 
-    def crear_interfaz(self):
-        # Cabecera
-        frame_header = tk.Frame(self.root, bg=self.VERDE_OSCURO, height=80)
-        frame_header.pack(fill="x")
-        tk.Label(frame_header, text="🏛️ MUNICIPALIDAD DISTRITAL DE SAN RAMÓN", font=("Arial", 18, "bold"), fg="white", bg=self.VERDE_OSCURO).pack(pady=20)
+busqueda = st.text_input("🔍 Buscar término (ej. '1.0' o 'Nacimiento'):")
 
-        # Buscador
-        frame_busqueda = tk.LabelFrame(self.root, text=" CRITERIOS DE BÚSQUEDA ", font=("Arial", 10, "bold"), bg="#FFFFFF", fg=self.VERDE_OSCURO, padx=15, pady=10)
-        frame_busqueda.pack(fill="x", padx=20, pady=10)
-
-        self.txt_buscar = tk.Entry(frame_busqueda, font=("Arial", 12), width=50)
-        self.txt_buscar.pack(side="left", padx=10)
-        tk.Button(frame_busqueda, text="🔍 BUSCAR", bg=self.VERDE_CLARO, fg="white", font=("Arial", 10, "bold"), command=self.buscar).pack(side="left", padx=10)
-
-        # Resultados
-        self.txt_ficha = tk.Text(self.root, font=("Arial", 11), bg="white", padx=20, pady=20, bd=0, state="disabled")
-        self.txt_ficha.pack(fill="both", expand=True, padx=20, pady=10)
-        
-        # Panel de Botones Obligatorios (Navegación)
-        frame_nav = tk.Frame(self.root, bg="#F4F6F4")
-        frame_nav.pack(fill="x", padx=20, pady=15)
-
-        self.btn_ant = tk.Button(frame_nav, text="⏮️ ANTERIOR", bg="#666666", fg="white", font=("Arial", 10, "bold"), command=self.anterior)
-        self.btn_ant.pack(side="left", padx=5)
-
-        self.lbl_info = tk.Label(frame_nav, text="Coincidencia: 0 de 0", bg="#F4F6F4", font=("Arial", 10, "bold"))
-        self.lbl_info.pack(side="left", padx=20)
-
-        self.btn_sig = tk.Button(frame_nav, text="SIGUIENTE ⏭️", bg="#666666", fg="white", font=("Arial", 10, "bold"), command=self.siguiente)
-        self.btn_sig.pack(side="left", padx=5)
-
-        btn_limpiar = tk.Button(frame_nav, text="🔄 NUEVA BÚSQUEDA", bg=self.VERDE_OSCURO, fg="white", font=("Arial", 10, "bold"), command=self.limpiar)
-        btn_limpiar.pack(side="right", padx=5)
-
-        # Etiquetas visuales
-        self.txt_ficha.tag_configure("titulo", font=("Arial", 16, "bold"), foreground=self.VERDE_OSCURO)
-        self.txt_ficha.tag_configure("subtitulo", font=("Arial", 12, "bold"), foreground=self.VERDE_CLARO)
-
-    def buscar(self):
-        termino = self.txt_buscar.get().lower()
-        self.coincidencias = [i for i in DATOS_TUPA if termino in i["procedimiento"].lower() or termino in i["numero"]]
-        self.indice = 0
-        self.actualizar_vista()
-
-    def actualizar_vista(self):
-        self.txt_ficha.configure(state="normal")
-        self.txt_ficha.delete("1.0", tk.END)
-        
-        if self.coincidencias:
-            p = self.coincidencias[self.indice]
-            self.txt_ficha.insert(tk.END, f"{p['procedimiento']}\n\n", "titulo")
-            self.txt_ficha.insert(tk.END, "DETALLES INSTITUCIONALES:\n", "subtitulo")
-            self.txt_ficha.insert(tk.END, f"Número: {p['numero']} | Plazo: {p['plazo']}\n")
-            self.txt_ficha.insert(tk.END, f"Autoridad: {p['autoridad']}\n\n", "subtitulo")
-            self.txt_ficha.insert(tk.END, "REQUISITOS:\n", "subtitulo")
-            for r in p['requisitos']:
-                self.txt_ficha.insert(tk.END, f"• {r}\n")
-            self.lbl_info.config(text=f"Coincidencia: {self.indice + 1} de {len(self.coincidencias)}")
-        else:
-            self.txt_ficha.insert(tk.END, "No se encontraron resultados para la búsqueda.")
-            self.lbl_info.config(text="Coincidencia: 0 de 0")
-        
-        self.txt_ficha.configure(state="disabled")
-
-    def siguiente(self):
-        if self.coincidencias and self.indice < len(self.coincidencias) - 1:
-            self.indice += 1
-            self.actualizar_vista()
-
-    def anterior(self):
-        if self.coincidencias and self.indice > 0:
-            self.indice -= 1
-            self.actualizar_vista()
+if busqueda:
+    resultados = [item for item in DATOS_TUPA if busqueda.lower() in item["procedimiento"].lower() or busqueda.lower() in item["numero"].lower()]
+    
+    if resultados:
+        for proc in resultados:
+            st.markdown("---")
+            # Ficha con colores diferenciados
+            campos = [
+                ("N.º ITEM:", proc["numero"]),
+                ("PROCEDIMIENTO:", proc["procedimiento"]),
+                ("BASE LEGAL / SUSTENTO:", proc["sustento"]),
+                ("DERECHO DE TRÁMITE:", proc["derecho_tramite"]),
+                ("PLAZO PARA RESOLVER:", proc["plazo"]),
+                ("AUTORIDAD COMPETENTE:", proc["autoridad"])
+            ]
             
-    def limpiar(self):
-        self.txt_buscar.delete(0, tk.END)
-        self.coincidencias = []
-        self.actualizar_vista()
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = BuscadorTupaInstitucional(root)
-    root.mainloop()
+            for titulo, contenido in campos:
+                st.markdown(f'<div class="titulo-seccion">{titulo}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="contenido-texto">{contenido}</div>', unsafe_allow_html=True)
+            
+            # Requisitos con estilo especial
+            st.markdown('<div class="titulo-seccion">REQUISITOS ESTRUCTURADOS:</div>', unsafe_allow_html=True)
+            for req in proc["requisitos"]:
+                st.markdown(f'<div class="contenido-texto">🔹 {req}</div>', unsafe_allow_html=True)
+    else:
+        st.error("No se encontraron resultados para ese término.")
