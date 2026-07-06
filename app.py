@@ -1,21 +1,10 @@
-import streamlit as st
+import tkinter as tk
+from tkinter import ttk, messagebox
 import json
 
 # ==============================================================================
-# CONFIGURACIÓN DE LA PÁGINA WEB INSTITUCIONAL
-# ==============================================================================
-st.set_page_config(
-    page_title="SISTEMA INTERNO DE CONSULTA TUPA - SAN RAMÓN", 
-    page_icon="🏛️", 
-    layout="wide"
-)
-
-# Paleta de colores institucionales de San Ramón
-COLOR_VERDE_OSCURO = "#1E5631"
-COLOR_VERDE_ACENTO = "#4C9A2A"
-
-# ==============================================================================
 # BASE DE DATOS INTEGRADA (MUNICIPALIDAD DISTRITAL DE SAN RAMÓN)
+# Extraído, limpiado y mapeado directamente de tu archivo TUPA
 # ==============================================================================
 DATOS_TUPA = [
     {
@@ -35,6 +24,7 @@ DATOS_TUPA = [
         "reconsideracion": "Sub Gerente de Registro Civil",
         "apelacion": "Gerencia Municipal"
     },
+    
 {
         "id": "187",
         "numero": "169",
@@ -64,116 +54,283 @@ DATOS_TUPA = [
     },
 ]
 
-# --- ENCABEZADO INSTITUCIONAL ---
-st.markdown(f"""
-    <div style="background-color:{COLOR_VERDE_OSCURO}; padding:20px; border-radius:10px; text-align:center; margin-bottom:25px;">
-        <h1 style="color:white; margin:0; font-size:28px;">🏛️ MUNICIPALIDAD DISTRITAL DE SAN RAMÓN</h1>
-        <p style="color:#C5E1A5; margin:5px 0 0 0; font-style:italic; font-size:16px;">SISTEMA INTERNO DE CONSULTA TUPA</p>
-    </div>
-""", unsafe_allow_html=True)
+class BuscadorTupaInstitucional:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("SISTEMA DE CONSULTA TUPA - MUNICIPALIDAD DISTRITAL DE SAN RAMÓN")
+        self.root.geometry("950x720") 
+        self.root.configure(bg="#F4F6F4")
 
-# --- PANEL DE BÚSQUEDA ---
-st.markdown(f"<h3 style='color:{COLOR_VERDE_OSCURO};'>🔍 Criterios de Búsqueda</h3>", unsafe_allow_html=True)
+        # Configuración estética Institucional de San Ramón
+        self.COLOR_VERDE_OSCURO = "#1E5631" 
+        self.COLOR_VERDE_ACENTO = "#4C9A2A"
+        self.COLOR_BLANCO = "#FFFFFF"
+        self.COLOR_GRIS_TEXTO = "#333333"
 
-col_input, col_filtro = st.columns([3, 1])
+        # Variables de memoria de búsqueda
+        self.coincidencias_actuales = []
+        self.indice_actual = 0
+        self.termino_actual = ""
 
-with col_input:
-    termino = st.text_input("Buscar término:", placeholder="Digite un número de ítem o palabra (ej. '169', 'nacimiento')...").strip()
+        self.crear_componentes()
+        self.mostrar_resumen_inicial()
 
-with col_filtro:
-    tipo_filtro = st.selectbox(
-        "Filtrar por:",
-        ["Todo", "Número de Item", "Nombre del Trámite", "Palabra Clave / Sustento"]
-    )
+    def crear_componentes(self):
+        # --- ENCABEZADO INSTITUCIONAL ---
+        header = tk.Frame(self.root, bg=self.COLOR_VERDE_OSCURO, height=85)
+        header.pack(fill="x", side="top")
+        header.pack_propagate(False)
 
-# --- MOTOR DE BÚSQUEDA ---
-coincidencias = []
+        lbl_logo_texto = tk.Label(header, text="🏛️", font=("Arial", 28), fg=self.COLOR_BLANCO, bg=self.COLOR_VERDE_OSCURO)
+        lbl_logo_texto.pack(side="left", padx=20, pady=10)
 
-if termino:
-    for item in DATOS_TUPA:
-        match_numero = termino.lower() in item["numero"].lower()
-        match_nombre = termino.lower() in item["procedimiento"].lower()
-        match_sustento = termino.lower() in item["sustento"].lower() or any(termino.lower() in req.lower() for req in item["requisitos"])
+        lbl_titulo = tk.Label(header, text="MUNICIPALIDAD DISTRITAL DE SAN RAMÓN", font=("Arial", 14, "bold"), fg=self.COLOR_BLANCO, bg=self.COLOR_VERDE_OSCURO)
+        lbl_titulo.pack(anchor="w", pady=(15, 0), padx=5)
         
-        if tipo_filtro == "Número de Item" and match_numero:
-            coincidencias.append(item)
-        elif tipo_filtro == "Nombre del Trámite" and match_nombre:
-            coincidencias.append(item)
-        elif tipo_filtro == "Palabra Clave / Sustento" and match_sustento:
-            coincidencias.append(item)
-        elif tipo_filtro == "Todo" and (match_numero or match_nombre or match_sustento):
-            coincidencias.append(item)
+        lbl_sub = tk.Label(header, text="SISTEMA INTERNO DE CONSULTA TUPA", font=("Arial", 10, "italic"), fg="#C5E1A5", bg=self.COLOR_VERDE_OSCURO)
+        lbl_sub.pack(anchor="w", padx=5)
 
-# --- PANEL DE RESULTADOS (FICHA TÉCNICA) ---
-st.markdown("---")
+        # --- CUERPO PRINCIPAL ---
+        contenedor = tk.Frame(self.root, bg="#F4F6F4")
+        contenedor.pack(fill="both", expand=True, padx=20, pady=15)
 
-if not termino:
-    st.info("💡 **SISTEMA TUPA ACTIVO:** Escriba un término o palabra descriptiva en la barra superior para desplegar la ficha estructurada institucional.")
-else:
-    total_resultados = len(coincidencias)
-    
-    if total_resultados == 0:
-        st.error(f"❌ No se encontraron procedimientos vinculados al término: '{termino}'")
-    else:
-        st.markdown(f"<span style='color:{COLOR_VERDE_ACENTO}; font-weight:bold;'>TOTAL COINCIDENCIAS ENCONTRADAS: {total_resultados}</span>", unsafe_allow_html=True)
+        # Panel de Filtros y Entrada
+        frame_busqueda = tk.LabelFrame(contenedor, text=" CRITERIOS DE BÚSQUEDA ", font=("Arial", 10, "bold"), bg=self.COLOR_BLANCO, fg=self.COLOR_VERDE_OSCURO, bd=2, relief="groove")
+        frame_busqueda.pack(fill="x", pady=5)
+
+        # Fila de Input
+        lbl_buscar = tk.Label(frame_busqueda, text="Buscar término:", font=("Arial", 11, "bold"), bg=self.COLOR_BLANCO, fg=self.COLOR_GRIS_TEXTO)
+        lbl_buscar.grid(row=0, column=0, padx=15, pady=15, sticky="w")
+
+        self.txt_entrada = tk.Entry(frame_busqueda, font=("Arial", 12), width=50, bd=1, relief="solid")
+        self.txt_entrada.grid(row=0, column=1, padx=5, pady=15, sticky="w")
+        self.txt_entrada.bind("<Return>", lambda event: self.buscar())
+
+        btn_buscar = tk.Button(frame_busqueda, text=" 🔍 Buscar ", font=("Arial", 10, "bold"), bg=self.COLOR_VERDE_ACENTO, fg=self.COLOR_BLANCO, bd=0, cursor="hand2", padx=20, pady=4, command=self.buscar)
+        btn_buscar.grid(row=0, column=2, padx=10, pady=15)
+
+        # selectores de tipo de filtro
+        frame_radios = tk.Frame(frame_busqueda, bg=self.COLOR_BLANCO)
+        frame_radios.grid(row=1, column=0, columnspan=3, padx=15, pady=5, sticky="w")
+
+        self.filtro_tipo = tk.StringVar(value="todo")
         
-        # Control de navegación web (Paginador numérico integrado de una sola línea)
-        if total_resultados > 1:
-            indice_actual = st.number_input("Ir a la coincidencia número:", min_value=1, max_value=total_resultados, step=1, value=1) - 1
+        opciones = [("Número de Item", "numero"), ("Nombre del Trámite", "nombre"), ("Palabra Clave / Sustento", "clave"), ("Todo", "todo")]
+        for texto, valor in opciones:
+            rb = tk.Radiobutton(frame_radios, text=texto, value=valor, variable=self.filtro_tipo, bg=self.COLOR_BLANCO, activebackground=self.COLOR_BLANCO, fg=self.COLOR_GRIS_TEXTO, font=("Arial", 10))
+            rb.pack(side="left", padx=10, pady=5)
+
+        # --- PANEL DE VISUALIZACIÓN (FICHA TÉCNICA) ---
+        frame_resultados = tk.LabelFrame(contenedor, text=" FICHA DEL PROCEDIMIENTO ADMINISTRATIVO ", font=("Arial", 10, "bold"), bg=self.COLOR_BLANCO, fg=self.COLOR_VERDE_OSCURO, bd=2, relief="groove")
+        frame_resultados.pack(fill="both", expand=True, pady=10)
+
+        # Área de Texto con Scroll integrado
+        self.txt_ficha = tk.Text(frame_resultados, font=("Arial", 11), bg="#FAFAFA", fg="#111111", wrap="word", bd=0)
+        scroll = tk.Scrollbar(frame_resultados, command=self.txt_ficha.yview)
+        self.txt_ficha.configure(yscrollcommand=scroll.set)
+        
+        scroll.pack(side="right", fill="y")
+        self.txt_ficha.pack(side="left", fill="both", expand=True, padx=15, pady=15)
+
+        # --- PIE DE PÁGINA Y BOTONES DE ACCIÓN ---
+        frame_acciones = tk.Frame(contenedor, bg="#F4F6F4")
+        frame_acciones.pack(fill="x", pady=5)
+
+        self.btn_imprimir = tk.Button(frame_acciones, text="📄 Imprimir Ficha", font=("Arial", 10, "bold"), bg="#E0E0E0", state="disabled", padx=15, pady=6, bd=0, command=self.imprimir_ficha)
+        self.btn_imprimir.pack(side="left", padx=5)
+
+        self.btn_pdf = tk.Button(frame_acciones, text="💾 Exportar Ficha", font=("Arial", 10, "bold"), bg="#E0E0E0", state="disabled", padx=15, pady=6, bd=0, command=self.exportar_ficha)
+        self.btn_pdf.pack(side="left", padx=5)
+
+        # --- BOTONES DE NAVEGACIÓN ---
+        self.btn_anterior = tk.Button(frame_acciones, text="⏮️ Anterior", font=("Arial", 10, "bold"), bg="#E0E0E0", state="disabled", padx=15, pady=6, bd=0, command=self.anterior_resultado)
+        self.btn_anterior.pack(side="left", padx=25)
+
+        self.lbl_paginacion = tk.Label(frame_acciones, text="Coincidencia: 0 de 0", font=("Arial", 10, "bold"), bg="#F4F6F4", fg=self.COLOR_GRIS_TEXTO)
+        self.lbl_paginacion.pack(side="left", padx=5)
+
+        self.btn_siguiente = tk.Button(frame_acciones, text="Siguiente ⏭️", font=("Arial", 10, "bold"), bg="#E0E0E0", state="disabled", padx=15, pady=6, bd=0, command=self.siguiente_resultado)
+        self.btn_siguiente.pack(side="left", padx=25)
+
+        btn_limpiar = tk.Button(frame_acciones, text="🔄 Nueva búsqueda", font=("Arial", 10, "bold"), bg="#666666", fg=self.COLOR_BLANCO, bd=0, cursor="hand2", padx=15, pady=6, command=self.limpiar)
+        btn_limpiar.pack(side="right", padx=5)
+
+    def mostrar_resumen_inicial(self):
+        self.txt_ficha.configure(state="normal")
+        self.txt_ficha.delete("1.0", tk.END)
+        self.txt_ficha.insert(tk.END, "SISTEMA TUPA ACTIVO\n", "titulo_inicial")
+        self.txt_ficha.insert(tk.END, f"Se han cargado los procedimientos optimizados del TUPA San Ramón de forma interna.\n\nEscriba el número de ítem (ej. '149' o '1.0') o palabras descriptivas como 'vehículos' o 'nacimiento' para desplegar la ficha estructurada institucional.", "cuerpo_inicial")
+        
+        self.txt_ficha.tag_configure("titulo_inicial", font=("Arial", 14, "bold"), foreground=self.COLOR_VERDE_OSCURO)
+        self.txt_ficha.tag_configure("cuerpo_inicial", font=("Arial", 11), foreground="#555555")
+        self.txt_ficha.configure(state="disabled")
+
+    def buscar(self):
+        termino = self.txt_entrada.get().strip()
+        if not termino:
+            messagebox.showwarning("Campo vacío", "Por favor, digite un número o palabra para iniciar la consulta.")
+            return
+
+        tipo = self.filtro_tipo.get()
+        coincidencias = []
+
+        for item in DATOS_TUPA:
+            if tipo == "numero" and termino.lower() in item["numero"].lower():
+                coincidencias.append(item)
+            elif tipo == "nombre" and termino.lower() in item["procedimiento"].lower():
+                coincidencias.append(item)
+            elif tipo == "clave" and (termino.lower() in item["sustento"].lower() or any(termino.lower() in req.lower() for req in item["requisitos"])):
+                coincidencias.append(item)
+            elif tipo == "todo":
+                if (termino.lower() in item["numero"].lower() or 
+                    termino.lower() in item["procedimiento"].lower() or 
+                    termino.lower() in item["sustento"].lower() or
+                    any(termino.lower() in req.lower() for req in item["requisitos"])):
+                    coincidencias.append(item)
+
+        self.coincidencias_actuales = coincidencias
+        self.indice_actual = 0
+        self.termino_actual = termino
+        
+        self.desplegar_resultados()
+
+    def desplegar_resultados(self):
+        self.txt_ficha.configure(state="normal")
+        self.txt_ficha.delete("1.0", tk.END)
+
+        total_resultados = len(self.coincidencias_actuales)
+
+        if total_resultados == 0:
+            self.txt_ficha.insert(tk.END, f"❌ No se encontraron procedimientos vinculados al término: '{self.termino_actual}'\n\nVerifique la escritura o cambie el criterio de selección.", "error")
+            self.txt_ficha.tag_configure("error", font=("Arial", 11, "bold"), foreground="red")
+            
+            self.btn_pdf.configure(state="disabled", bg="#E0E0E0")
+            self.btn_imprimir.configure(state="disabled", bg="#E0E0E0")
+            self.btn_anterior.configure(state="disabled", bg="#E0E0E0")
+            self.btn_siguiente.configure(state="disabled", bg="#E0E0E0")
+            self.lbl_paginacion.configure(text="Coincidencia: 0 de 0")
         else:
-            indice_actual = 0
+            self.btn_pdf.configure(state="normal", bg=self.COLOR_VERDE_OSCURO, fg=self.COLOR_BLANCO, cursor="hand2")
+            self.btn_imprimir.configure(state="normal", bg=self.COLOR_VERDE_OSCURO, fg=self.COLOR_BLANCO, cursor="hand2")
+
+            if self.indice_actual > 0:
+                self.btn_anterior.configure(state="normal", bg=self.COLOR_VERDE_OSCURO, fg=self.COLOR_BLANCO, cursor="hand2")
+            else:
+                self.btn_anterior.configure(state="disabled", bg="#E0E0E0", fg="black")
+
+            if self.indice_actual < total_resultados - 1:
+                self.btn_siguiente.configure(state="normal", bg=self.COLOR_VERDE_OSCURO, fg=self.COLOR_BLANCO, cursor="hand2")
+            else:
+                self.btn_siguiente.configure(state="disabled", bg="#E0E0E0", fg="black")
+
+            self.lbl_paginacion.configure(text=f"Coincidencia: {self.indice_actual + 1} de {total_resultados}")
+
+            self.txt_ficha.insert(tk.END, f"TOTAL COINCIDENCIAS: {total_resultados} | VIENDO EL REGISTRO ACTUAL NÚMERO: {self.indice_actual + 1}\n", "info_conteo")
+            self.txt_ficha.insert(tk.END, "═"*75 + "\n\n")
+            self.txt_ficha.tag_configure("info_conteo", font=("Arial", 10, "bold"), foreground=self.COLOR_VERDE_ACENTO)
+
+            proc = self.coincidencias_actuales[self.indice_actual]
+
+            secciones = [
+                ("N.º ITEM:", proc["numero"]),
+                ("PROCEDIMIENTO:", proc["procedimiento"]),
+                ("BASE LEGAL / SUSTENTO:", proc["sustento"]),
+                ("DERECHO DE TRÁMITE:", proc["derecho_tramite"]),
+                ("PLAZO PARA RESOLVER:", proc["plazo"]),
+                ("INICIO DEL PROCEDIMIENTO:", proc["inicio"]),
+                ("AUTORIDAD COMPETENTE:", proc["autoridad"]),
+                ("RECURSO DE RECONSIDERACIÓN:", proc["reconsideracion"]),
+                ("RECURSO DE APELACIÓN:", proc["apelacion"])
+            ]
+
+            for titulo, contenido in secciones:
+                self.txt_ficha.insert(tk.END, f"{titulo}\n", "subtítulo")
+                self.txt_ficha.insert(tk.END, f"{contenido}\n\n", "contenido")
+
+            self.txt_ficha.insert(tk.END, "REQUISITOS ESTRUCTURADOS:\n", "subtítulo")
+            for req in proc["requisitos"]:
+                self.txt_ficha.insert(tk.END, f"  🔹 {req}\n", "contenido")
             
-        proc = coincidencias[indice_actual]
-        
-        # Desplegar la ficha en la página web de forma ordenada
-        st.markdown(f"## 📋 Ficha del Procedimiento (Coincidencia {indice_actual + 1} de {total_resultados})")
-        
-        st.markdown(f"**N.º ITEM:** `{proc['numero']}`")
-        st.markdown(f"### **PROCEDIMIENTO:**\n{proc['procedimiento']}")
-        st.markdown(f"**BASE LEGAL / SUSTENTO:**\n{proc['sustento']}")
-        
-        # Dividir la información técnica en dos columnas limpias
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown(f"🔹 **DERECHO DE TRÁMITE:** {proc['derecho_tramite']}")
-            st.markdown(f"🔹 **PLAZO PARA RESOLVER:** {proc['plazo']}")
-            st.markdown(f"🔹 **INICIO DEL PROCEDIMIENTO:** {proc['inicio']}")
-        with col_b:
-            st.markdown(f"🔹 **AUTORIDAD COMPETENTE:** {proc['autoridad']}")
-            st.markdown(f"🔹 **RECURSO DE RECONSIDERACIÓN:**\n{proc['reconsideracion']}")
-            st.markdown(f"🔹 **RECURSO DE APELACIÓN:**\n{proc['apelacion']}")
+            self.txt_ficha.tag_configure("subtítulo", font=("Arial", 11, "bold"), foreground=self.COLOR_VERDE_OSCURO)
+            self.txt_ficha.tag_configure("contenido", font=("Arial", 11), foreground="#222222")
+
+            self.resaltar_coincidencia(self.termino_actual)
+
+        self.txt_ficha.configure(state="disabled")
+
+    def siguiente_resultado(self):
+        if self.indice_actual < len(self.coincidencias_actuales) - 1:
+            self.indice_actual += 1
+            self.desplegar_resultados()
+
+    def anterior_resultado(self):
+        if self.indice_actual > 0:
+            self.indice_actual -= 1
+            self.desplegar_resultados()
+
+    def imprimir_ficha(self):
+        try:
+            texto_impresion = self.txt_ficha.get("1.0", tk.END)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w", encoding="utf-8") as f:
+                f.write(texto_impresion)
+                nombre_archivo = f.name
             
-        st.markdown("### **REQUISITOS ESTRUCTURADOS:**")
-        for req in proc["requisitos"]:
-            st.markdown(f"  * {req}")
+            os.startfile(nombre_archivo, "print")
+        except Exception as e:
+            messagebox.showerror("Error de Impresión", f"No se pudo mandar a imprimir:\n{str(e)}")
+
+    # --- FUNCIÓN DE EXPORTAR CORREGIDA PARA EVITAR RESTRICCIONES DE WINDOWS ---
+    def exportar_ficha(self):
+        try:
+            texto_exportar = self.txt_ficha.get("1.0", tk.END)
+            proc_actual = self.coincidencias_actuales[self.indice_actual]
             
-        # ==============================================================================
-        # GENERACIÓN DE LA HOJA LIMPIA E INSTITUCIONAL PARA IMPRIMIR/GUARDAR
-        # ==============================================================================
-        hoja_limpia = "======================================================================\n"
-        hoja_limpia += "               MUNICIPALIDAD DISTRITAL DE SAN RAMÓN                   \n"
-        hoja_limpia += "             TEXTO ÚNICO DE PROCEDIMIENTOS ADMINISTRATIVOS            \n"
-        hoja_limpia += "======================================================================\n\n"
-        hoja_limpia += f"N.º ITEM: {proc['numero']}\n\n"
-        hoja_limpia += f"PROCEDIMIENTO:\n{proc['procedimiento']}\n\n"
-        hoja_limpia += f"BASE LEGAL / SUSTENTO:\n{proc['sustento']}\n\n"
-        hoja_limpia += f"DERECHO DE TRÁMITE: {proc['derecho_tramite']}\n"
-        hoja_limpia += f"PLAZO PARA RESOLVER: {proc['plazo']}\n"
-        hoja_limpia += f"INICIO DEL PROCEDIMIENTO: {proc['inicio']}\n"
-        hoja_limpia += f"AUTORIDAD COMPETENTE: {proc['autoridad']}\n"
-        hoja_limpia += f"RECURSO DE RECONSIDERACIÓN:\n{proc['reconsideracion']}\n\n"
-        hoja_limpia += f"RECURSO DE APELACIÓN:\n{proc['apelacion']}\n\n"
-        hoja_limpia += "REQUISITOS ESTRUCTURADOS:\n"
-        for req in proc["requisitos"]:
-            hoja_limpia += f"  - {req}\n"
-        hoja_limpia += "\n======================================================================\n"
-        
-        st.write("---")
-        
-        # Botón nativo de descarga web: descarga la ficha formal limpia
-        st.download_button(
-            label="💾 Guardar / Exportar Ficha Limpia Oficial",
-            data=hoja_limpia,
-            file_name=f"Ficha_TUPA_Item_{proc['numero']}.txt",
-            mime="text/plain"
-        )
+            # Limpiamos el nombre de caracteres que puedan romper rutas
+            nombre_base = f"Ficha_TUPA_Item_{proc_actual['numero']}".replace("/", "_").replace(".", "_")
+            
+            # Forzamos la creación del archivo en la carpeta temporal de Windows
+            ruta_archivo = os.path.join(tempfile.gettempdir(), f"{nombre_base}.txt")
+            
+            # Bucle inteligente: si el archivo ya está abierto, genera una copia numerada consecutiva
+            contador = 1
+            while True:
+                try:
+                    with open(ruta_archivo, "w", encoding="utf-8") as f:
+                        f.write(texto_exportar)
+                    break 
+                except PermissionError:
+                    ruta_archivo = os.path.join(tempfile.gettempdir(), f"{nombre_base}_{contador}.txt")
+                    contador += 1
+            
+            # Levanta la ficha directamente en el Bloc de Notas de Windows
+            os.startfile(ruta_archivo)
+            
+        except Exception as e:
+            messagebox.showerror("Error al Exportar", f"No se pudo guardar el documento:\n{str(e)}")
+
+    def resaltar_coincidencia(self, palabra):
+        self.txt_ficha.tag_configure("amarillo", background="#FFF176", foreground="#000000")
+        posicion = "1.0"
+        while True:
+            posicion = self.txt_ficha.search(palabra, posicion, nocase=True, stopindex=tk.END)
+            if not posicion: break
+            fin_posicion = f"{posicion}+{len(palabra)}c"
+            self.txt_ficha.tag_add("amarillo", posicion, fin_posicion)
+            posicion = fin_posicion
+
+    def limpiar(self):
+        self.txt_entrada.delete(0, tk.END)
+        self.mostrar_resumen_inicial()
+        self.btn_pdf.configure(state="disabled", bg="#E0E0E0")
+        self.btn_imprimir.configure(state="disabled", bg="#E0E0E0")
+        self.btn_anterior.configure(state="disabled", bg="#E0E0E0")
+        self.btn_siguiente.configure(state="disabled", bg="#E0E0E0")
+        self.lbl_paginacion.configure(text="Coincidencia: 0 de 0")
+        self.coincidencias_actuales = []
+        self.indice_actual = 0
+        self.filtro_tipo.set("todo")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = BuscadorTupaInstitucional(root)
+    root.mainloop()
