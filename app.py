@@ -4168,7 +4168,7 @@ DATOS_TUPA = [
 
 st.set_page_config(page_title="TUPA San Ramón", layout="wide")
 
-# CSS para el resaltado y estilo institucional
+# CSS para estilos institucionales
 st.markdown("""
     <style>
     .titulo-verde { color: #1E5631; font-weight: bold; font-size: 1.1em; }
@@ -4179,39 +4179,36 @@ st.markdown("""
 
 st.markdown('<div class="header-box"><h1>🏛️ MUNICIPALIDAD DISTRITAL DE SAN RAMÓN</h1><p>SISTEMA INTERNO DE CONSULTA TUPA</p></div>', unsafe_allow_html=True)
 
-# Lógica de búsqueda
-if 'resultados' not in st.session_state: st.session_state.resultados = []
-if 'indice' not in st.session_state: st.session_state.indice = 0
-
-col1, col2 = st.columns([3, 1])
-with col1:
-    termino = st.text_input("Buscar término:")
-with col2:
-    filtro = st.radio("Criterio:", ["Todo", "Número", "Nombre"])
+# Lógica de búsqueda inicial
+termino = st.text_input("Buscar término:")
+filtro = st.radio("Criterio:", ["Todo", "Número", "Nombre"], horizontal=True)
 
 def resaltar_texto(texto, palabra):
     if not palabra: return texto
     return re.sub(f"({re.escape(palabra)})", r'<span class="resaltado">\1</span>', str(texto), flags=re.IGNORECASE)
 
-if st.button("BUSCAR"):
-    st.session_state.indice = 0
-    st.session_state.resultados = [
+# Realizar búsqueda
+resultados = []
+if termino:
+    resultados = [
         item for item in DATOS_TUPA 
         if (filtro == "Todo" and termino.lower() in str(item).lower()) or
            (filtro == "Número" and termino.lower() in item["numero"].lower()) or
            (filtro == "Nombre" and termino.lower() in item["procedimiento"].lower())
     ]
 
-# Despliegue de resultados bloque a bloque
-if st.session_state.resultados:
-    total = len(st.session_state.resultados)
-    idx = st.session_state.indice
-    proc = st.session_state.resultados[idx]
+# --- PASO 1: Selector en la parte superior ---
+if resultados:
+    st.success(f"Se encontraron {len(resultados)} coincidencias.")
     
-    st.markdown(f"### Coincidencia {idx + 1} de {total}")
+    # Crear un formato legible para el selectbox
+    opciones = {f"{r['numero']} - {r['procedimiento']}": r for r in resultados}
+    seleccion = st.selectbox("Seleccione un procedimiento para ver el detalle:", options=list(opciones.keys()))
+    
+    # --- PASO 2: Mostrar el detalle del seleccionado (image_ebbb69.png estilo) ---
+    proc = opciones[seleccion]
     st.markdown("---")
     
-    # Lista de los 10 campos solicitados
     campos = [
         ("N° ITEM:", proc["numero"]),
         ("PROCEDIMIENTO:", proc["procedimiento"]),
@@ -4232,14 +4229,6 @@ if st.session_state.resultados:
     st.markdown('<div class="titulo-verde">REQUISITOS ESTRUCTURADOS:</div>', unsafe_allow_html=True)
     for req in proc["requisitos"]:
         st.markdown(f"🔹 {resaltar_texto(req, termino)}", unsafe_allow_html=True)
-
-    # Navegación
-    col_izq, col_der = st.columns([1, 1])
-    if idx > 0 and col_izq.button("⏮️ Anterior"):
-        st.session_state.indice -= 1
-        st.rerun()
-    if idx < total - 1 and col_der.button("Siguiente ⏭️"):
-        st.session_state.indice += 1
-        st.rerun()
+        
 elif termino:
     st.warning("No se encontraron resultados.")
