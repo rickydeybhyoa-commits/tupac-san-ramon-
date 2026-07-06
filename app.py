@@ -1,5 +1,8 @@
 import streamlit as st
-import re  
+import re
+
+# Tu lista debe comenzar sin espacios a la izquierda
+DATOS_TUPA = [
     {
         "id": "1",
         "numero": "1.0",
